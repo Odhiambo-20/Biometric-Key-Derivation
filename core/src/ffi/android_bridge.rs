@@ -8,7 +8,10 @@ pub extern "C" fn bkd_android_init() -> FfiResultCode {
 }
 
 #[no_mangle]
-pub extern "C" fn bkd_android_enroll(
+/// # Safety
+///
+/// `req` and `resp` must satisfy the safety contract of `super::bkd_enroll`.
+pub unsafe extern "C" fn bkd_android_enroll(
     req: *const BkdEnrollRequest,
     resp: *mut BkdEnrollResponse,
 ) -> FfiResultCode {
@@ -16,7 +19,10 @@ pub extern "C" fn bkd_android_enroll(
 }
 
 #[no_mangle]
-pub extern "C" fn bkd_android_recover(
+/// # Safety
+///
+/// `req` and `resp` must satisfy the safety contract of `super::bkd_recover`.
+pub unsafe extern "C" fn bkd_android_recover(
     req: *const BkdRecoverRequest,
     resp: *mut BkdRecoverResponse,
 ) -> FfiResultCode {

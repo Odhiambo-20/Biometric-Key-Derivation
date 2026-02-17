@@ -8,7 +8,10 @@ pub extern "C" fn bkd_ios_init() -> FfiResultCode {
 }
 
 #[no_mangle]
-pub extern "C" fn bkd_ios_enroll(
+/// # Safety
+///
+/// `req` and `resp` must satisfy the safety contract of `super::bkd_enroll`.
+pub unsafe extern "C" fn bkd_ios_enroll(
     req: *const BkdEnrollRequest,
     resp: *mut BkdEnrollResponse,
 ) -> FfiResultCode {
@@ -16,7 +19,10 @@ pub extern "C" fn bkd_ios_enroll(
 }
 
 #[no_mangle]
-pub extern "C" fn bkd_ios_recover(
+/// # Safety
+///
+/// `req` and `resp` must satisfy the safety contract of `super::bkd_recover`.
+pub unsafe extern "C" fn bkd_ios_recover(
     req: *const BkdRecoverRequest,
     resp: *mut BkdRecoverResponse,
 ) -> FfiResultCode {
