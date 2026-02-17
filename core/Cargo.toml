@@ -1,0 +1,28 @@
+[package]
+name = "biometric_core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Biometric key derivation core: quantization, ECC-friendly fuzzy extractor, and key derivation"
+
+[lib]
+name = "biometric_core"
+crate-type = ["rlib", "cdylib", "staticlib"]
+
+[dependencies]
+thiserror = "1"
+sha2 = "0.10"
+hkdf = "0.12"
+rand = "0.8"
+zeroize = { version = "1", features = ["zeroize_derive"] }
+serde = { version = "1", features = ["derive"] }
+subtle = "2"
+bchlib-sys = "0.2.1"
+
+[dev-dependencies]
+rand = "0.8"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
