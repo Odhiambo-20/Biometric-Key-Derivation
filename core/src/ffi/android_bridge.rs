@@ -1,4 +1,6 @@
-use super::types::{BkdEnrollRequest, BkdEnrollResponse, BkdRecoverRequest, BkdRecoverResponse, FfiResultCode};
+use super::types::{
+    BkdEnrollRequest, BkdEnrollResponse, BkdRecoverRequest, BkdRecoverResponse, FfiResultCode,
+};
 
 #[no_mangle]
 pub extern "C" fn bkd_android_init() -> FfiResultCode {
@@ -10,7 +12,7 @@ pub extern "C" fn bkd_android_enroll(
     req: *const BkdEnrollRequest,
     resp: *mut BkdEnrollResponse,
 ) -> FfiResultCode {
-    super::bkd_enroll(req, resp)
+    unsafe { super::bkd_enroll(req, resp) }
 }
 
 #[no_mangle]
@@ -18,5 +20,5 @@ pub extern "C" fn bkd_android_recover(
     req: *const BkdRecoverRequest,
     resp: *mut BkdRecoverResponse,
 ) -> FfiResultCode {
-    super::bkd_recover(req, resp)
+    unsafe { super::bkd_recover(req, resp) }
 }

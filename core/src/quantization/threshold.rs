@@ -11,7 +11,7 @@ pub fn median_threshold(embedding: &[f32]) -> f32 {
     let mut v = embedding.to_vec();
     v.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     let mid = v.len() / 2;
-    if v.len() % 2 == 0 {
+    if v.len().is_multiple_of(2) {
         (v[mid - 1] + v[mid]) * 0.5
     } else {
         v[mid]

@@ -76,7 +76,13 @@ fn deserialize_helper_data(data: &[u8]) -> Option<HelperData> {
 }
 
 #[no_mangle]
-pub extern "C" fn bkd_enroll(
+/// # Safety
+///
+/// `req` and `resp` must be valid non-null pointers to initialized
+/// `BkdEnrollRequest`/`BkdEnrollResponse` structures for the duration
+/// of this call. Embedded buffer pointers must be valid for the
+/// specified capacities.
+pub unsafe extern "C" fn bkd_enroll(
     req: *const BkdEnrollRequest,
     resp: *mut BkdEnrollResponse,
 ) -> FfiResultCode {
@@ -130,7 +136,13 @@ pub extern "C" fn bkd_enroll(
 }
 
 #[no_mangle]
-pub extern "C" fn bkd_recover(
+/// # Safety
+///
+/// `req` and `resp` must be valid non-null pointers to initialized
+/// `BkdRecoverRequest`/`BkdRecoverResponse` structures for the duration
+/// of this call. Embedded buffer pointers must be valid for the
+/// specified capacities.
+pub unsafe extern "C" fn bkd_recover(
     req: *const BkdRecoverRequest,
     resp: *mut BkdRecoverResponse,
 ) -> FfiResultCode {

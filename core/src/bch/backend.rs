@@ -34,7 +34,12 @@ impl BchEngine {
     pub fn encode(&self, msg: &[u8]) -> Result<Vec<u8>> {
         let mut ecc = vec![0u8; self.ecc_bytes()];
         unsafe {
-            bchlib_sys::encode_bch(self.ctrl.as_ptr(), msg.as_ptr(), msg.len() as u32, ecc.as_mut_ptr());
+            bchlib_sys::encode_bch(
+                self.ctrl.as_ptr(),
+                msg.as_ptr(),
+                msg.len() as u32,
+                ecc.as_mut_ptr(),
+            );
         }
         Ok(ecc)
     }
