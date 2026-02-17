@@ -6,10 +6,14 @@ pub mod params;
 use backend::BchEngine;
 
 use crate::error::{BiometricError, Result};
-use crate::utils::bit_ops::{pack_bits, unpack_bits};
+use crate::utils::bit_ops::{pack_bits_le, unpack_bits_le};
+use crate::utils::hamming::hamming_distance;
 use crate::utils::validation::validate_bits;
 
 pub use params::BchParams;
+
+const BCH_M: i32 = 8;
+const BCH_T_INTERNAL: i32 = 16;
 
 #[derive(Debug, Clone)]
 pub struct BchCodec {
@@ -33,16 +37,15 @@ impl BchCodec {
 
         validate_bits(data_bits, self.params.k)?;
 
-        let data_bytes = pack_bits(data_bits)?;
-        let engine = BchEngine::new(8, 16)?;
-        let ecc = engine.encode(&data_bytes)?;
-        let ecc_bits = unpack_bits(&ecc, ecc.len() * 8);
+        let engine = BchEngine::new(BCH_M, BCH_T_INTERNAL)?;
+        let data_bytes = pack_bits_le(data_bits)?;
+        let ecc_bytes = engine.encode(&data_bytes)?;
+        let ecc_bits_full = unpack_bits_le(&ecc_bytes, ecc_bytes.len() * 8);
 
-        // API compatibility: keep n=255. Linux BCH(8,16) with 16-byte input yields
-        // 128 data bits + 128 parity bits. We drop one parity bit to keep 255 bits.
+        // Produce fixed n=255 codeword: 128 data bits + first 127 parity bits.
         let mut codeword = Vec::with_capacity(self.params.n);
         codeword.extend_from_slice(data_bits);
-        codeword.extend_from_slice(&ecc_bits[..127]);
+        codeword.extend_from_slice(&ecc_bits_full[..127]);
 
         Ok(codeword)
     }
@@ -59,21 +62,29 @@ impl BchCodec {
 
         validate_bits(noisy_codeword, self.params.n)?;
 
-        let mut msg_bits = noisy_codeword[..128].to_vec();
-        let mut ecc_bits = noisy_codeword[128..].to_vec();
-
-        // Restore dropped parity bit as 0 for backend call.
+        let msg_bits = noisy_codeword[..self.params.k].to_vec();
+        let mut ecc_bits = noisy_codeword[self.params.k..].to_vec();
         ecc_bits.push(0);
 
-        let mut msg_bytes = pack_bits(&msg_bits)?;
-        let ecc_bytes = pack_bits(&ecc_bits)?;
+        let mut msg_bytes = pack_bits_le(&msg_bits)?;
+        let ecc_bytes = pack_bits_le(&ecc_bits)?;
 
-        let engine = BchEngine::new(8, 16)?;
-        let _ = engine.decode_and_correct(&mut msg_bytes, &ecc_bytes)?;
+        let engine = BchEngine::new(BCH_M, BCH_T_INTERNAL)?;
+        let _corrected = engine.decode_and_correct(&mut msg_bytes, &ecc_bytes)?;
 
-        msg_bits = unpack_bits(&msg_bytes, 128);
-        validate_bits(&msg_bits, 128)?;
+        let recovered_bits = unpack_bits_le(&msg_bytes, self.params.k);
+        validate_bits(&recovered_bits, self.params.k)?;
 
-        Ok(msg_bits)
+        // Enforce caller-defined tolerance window on re-encoded distance.
+        let reencoded = self.encode(&recovered_bits)?;
+        let distance = hamming_distance(noisy_codeword, &reencoded)?;
+        if distance > self.params.t {
+            return Err(BiometricError::EccDecode(format!(
+                "distance {} exceeds configured tolerance t={}",
+                distance, self.params.t
+            )));
+        }
+
+        Ok(recovered_bits)
     }
 }

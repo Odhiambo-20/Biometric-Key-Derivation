@@ -1,18 +1,35 @@
-use crate::error::Result;
+use crate::error::{BiometricError, Result};
 use crate::utils::validation::validate_bits;
 
-pub fn encode_repetition_255_from_128(data_bits: &[u8]) -> Result<Vec<u8>> {
-    validate_bits(data_bits, 128)?;
-    Ok(data_bits.to_vec())
+pub fn expand_biometric_bits(bits: &[u8], target_len: usize) -> Result<Vec<u8>> {
+    if bits.is_empty() {
+        return Err(BiometricError::Validation(
+            "biometric bit vector cannot be empty".to_string(),
+        ));
+    }
+    validate_bits(bits, bits.len())?;
+
+    if target_len < bits.len() {
+        return Err(BiometricError::Validation(format!(
+            "target_len {} must be >= source_len {}",
+            target_len,
+            bits.len()
+        )));
+    }
+
+    let mut out = Vec::with_capacity(target_len);
+    out.extend_from_slice(bits);
+
+    let mut i = 0usize;
+    while out.len() < target_len {
+        out.push(bits[i % bits.len()]);
+        i += 1;
+    }
+
+    Ok(out)
 }
 
+// Kept for API compatibility.
 pub fn expand_biometric_bits_255(bits_128: &[u8]) -> Result<Vec<u8>> {
-    validate_bits(bits_128, 128)?;
-
-    // For helper-data XOR alignment we need 255 bits. We deterministically expand
-    // 128 biometric bits by appending 127 mirrored bits.
-    let mut out = Vec::with_capacity(255);
-    out.extend_from_slice(bits_128);
-    out.extend(bits_128.iter().copied().take(127));
-    Ok(out)
+    expand_biometric_bits(bits_128, 256)
 }

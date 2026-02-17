@@ -1,7 +1,7 @@
 use rand::{rngs::OsRng, RngCore};
 use zeroize::Zeroize;
 
-use crate::bch::{encode::expand_biometric_bits_255, BchCodec, BchParams};
+use crate::bch::{encode::expand_biometric_bits, BchCodec, BchParams};
 use crate::error::Result;
 use crate::fuzzy_extractor::helper_data::HelperData;
 use crate::fuzzy_extractor::xor::xor_vec;
@@ -27,7 +27,7 @@ pub fn enroll(
     let codec = BchCodec::new(params);
 
     let biometric_bits = quantize_embedding(embedding, method)?;
-    let expanded_bio = expand_biometric_bits_255(&biometric_bits)?;
+    let expanded_bio = expand_biometric_bits(&biometric_bits, params.n)?;
 
     let mut message_bits = vec![0u8; params.k];
     let mut rnd = vec![0u8; params.k];

@@ -1,7 +1,7 @@
 use subtle::ConstantTimeEq;
 use zeroize::Zeroize;
 
-use crate::bch::{encode::expand_biometric_bits_255, BchCodec, BchParams};
+use crate::bch::{encode::expand_biometric_bits, BchCodec, BchParams};
 use crate::error::{BiometricError, Result};
 use crate::fuzzy_extractor::helper_data::HelperData;
 use crate::fuzzy_extractor::xor::xor_vec;
@@ -30,7 +30,7 @@ pub fn recover(
     validate_bits(&helper.helper_bits, helper.n)?;
 
     let biometric_bits = quantize_embedding(embedding, method)?;
-    let expanded_bio = expand_biometric_bits_255(&biometric_bits)?;
+    let expanded_bio = expand_biometric_bits(&biometric_bits, helper.n)?;
     let noisy_codeword = xor_vec(&helper.helper_bits, &expanded_bio)?;
 
     let mut recovered_message = codec.decode(&noisy_codeword)?;

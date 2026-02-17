@@ -12,10 +12,14 @@ impl BchParams {
         Self { n: 255, k: 128, t }
     }
 
+    pub fn new_256_128(t: usize) -> Self {
+        Self::new_255_128(t)
+    }
+
     pub fn validate(&self) -> Result<()> {
         if self.n != 255 || self.k != 128 {
             return Err(BiometricError::InvalidBchParams(format!(
-                "this backend currently supports only n=255, k=128; got n={}, k={}",
+                "this profile supports only n=255, k=128; got n={}, k={}",
                 self.n, self.k
             )));
         }

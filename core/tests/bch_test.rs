@@ -7,7 +7,8 @@ fn bch_like_encode_decode_roundtrip() {
 
     let data: Vec<u8> = (0..128).map(|i| (i % 2) as u8).collect();
     let codeword = codec.encode(&data).unwrap();
-    let decoded = codec.decode(&codeword).unwrap();
+    assert_eq!(codeword.len(), 255);
 
+    let decoded = codec.decode(&codeword).unwrap();
     assert_eq!(decoded, data);
 }
