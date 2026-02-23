@@ -11,9 +11,12 @@ use crate::utils::validation::validate_bits;
 
 pub use params::BchParams;
 
-/// Galois field order for BCH
-/// m=10 => GF(2^10) => supports codewords up to 1023 bits
-const BCH_M: i32 = 10;
+/// Galois field order for BCH.
+/// m=11 => GF(2^11) => supports codewords up to 2047 bits.
+/// This is required for BCH(2047, 512, 180):
+///   constraint: t * m <= n  =>  180 * 11 = 1980 <= 2047  (satisfied)
+///   m=10 was invalid:         180 * 10 = 1800 > 1023     (violated)
+const BCH_M: i32 = 11;
 
 #[derive(Debug, Clone)]
 pub struct BchCodec {
@@ -25,10 +28,10 @@ impl BchCodec {
         Self { params }
     }
 
-    /// Encode data bits into BCH codeword
-    /// 
-    /// Input: k=512 data bits
-    /// Output: n=1023 codeword bits (512 data + 511 parity)
+    /// Encode data bits into BCH codeword.
+    ///
+    /// Input:  k=512 data bits
+    /// Output: n=2047 codeword bits (512 data + 1535 parity)
     pub fn encode(&self, data_bits: &[u8]) -> Result<Vec<u8>> {
         self.params.validate()?;
 
@@ -41,19 +44,19 @@ impl BchCodec {
 
         validate_bits(data_bits, self.params.k)?;
 
-        // Initialize BCH engine
+        // Initialize BCH engine with m=11 (GF(2^11), n_max=2047)
         let engine = BchEngine::new(BCH_M, self.params.t as i32)?;
-        
+
         // Pack bits into bytes for backend
         let data_bytes = pack_bits_le(data_bits)?;
-        
+
         // Generate ECC parity bytes
         let ecc_bytes = engine.encode(&data_bytes)?;
-        
+
         // Unpack ECC bytes back to bits
         let ecc_bits = unpack_bits_le(&ecc_bytes, ecc_bytes.len() * 8);
 
-        // Construct codeword: [data bits | ecc bits | padding]
+        // Construct codeword: [data bits | ecc bits | padding to n]
         let mut codeword = Vec::with_capacity(self.params.n);
         codeword.extend_from_slice(data_bits);
         codeword.extend_from_slice(&ecc_bits);
@@ -63,15 +66,15 @@ impl BchCodec {
             codeword.push(0);
         }
 
-        // Truncate if needed (shouldn't happen with correct parameters)
+        // Truncate to exactly n bits (guards against oversized ecc_bits edge case)
         codeword.truncate(self.params.n);
 
         Ok(codeword)
     }
 
-    /// Decode noisy BCH codeword with error correction
-    /// 
-    /// Input: n=1023 noisy codeword bits
+    /// Decode noisy BCH codeword and correct errors.
+    ///
+    /// Input:  n=2047 noisy codeword bits
     /// Output: k=512 corrected data bits
     pub fn decode(&self, noisy_codeword: &[u8]) -> Result<Vec<u8>> {
         self.params.validate()?;
@@ -95,14 +98,15 @@ impl BchCodec {
         let mut msg_bytes = pack_bits_le(&msg_bits)?;
         let ecc_bytes = pack_bits_le(&ecc_bits)?;
 
-        // Initialize BCH engine and perform error correction
+        // Initialize BCH engine with m=11 and perform error correction
         let engine = BchEngine::new(BCH_M, self.params.t as i32)?;
         let corrected_count = engine.decode_and_correct(&mut msg_bytes, &ecc_bytes)?;
 
-        // Sanity check: corrected errors should not exceed t
+        // Sanity check: corrected errors must not exceed t
         if corrected_count > self.params.t {
             return Err(BiometricError::EccDecode(format!(
-                "Backend corrected {} errors, exceeding configured t={}. This should not happen.",
+                "Backend corrected {} errors, exceeding configured t={}. \
+                 This indicates a logic error in the BCH backend.",
                 corrected_count, self.params.t
             )));
         }
@@ -121,12 +125,12 @@ mod tests {
 
     #[test]
     fn bch_encode_decode_no_errors() {
-        let params = BchParams::new_1023_512(180);
+        let params = BchParams::new_2047_512(180);
         let codec = BchCodec::new(params);
 
         let data: Vec<u8> = (0..512).map(|i| (i % 2) as u8).collect();
         let codeword = codec.encode(&data).unwrap();
-        assert_eq!(codeword.len(), 1023);
+        assert_eq!(codeword.len(), 2047);
 
         let decoded = codec.decode(&codeword).unwrap();
         assert_eq!(decoded, data);
@@ -134,15 +138,15 @@ mod tests {
 
     #[test]
     fn bch_corrects_small_errors() {
-        let params = BchParams::new_1023_512(180);
+        let params = BchParams::new_2047_512(180);
         let codec = BchCodec::new(params);
 
         let data: Vec<u8> = (0..512).map(|i| (i % 2) as u8).collect();
         let mut codeword = codec.encode(&data).unwrap();
 
         // Introduce 50 bit errors (well within t=180 tolerance)
-        for i in 0..50 {
-            codeword[i] ^= 1;
+        for item in codeword.iter_mut().take(50) {
+            *item ^= 1;
         }
 
         let decoded = codec.decode(&codeword).unwrap();

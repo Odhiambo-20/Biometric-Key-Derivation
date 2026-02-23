@@ -16,7 +16,9 @@ use self::types::{
 const KEY_LEN: usize = 32;
 const SALT_LEN: usize = 16;
 const COMMITMENT_LEN: usize = 32;
-const HELPER_BITS_LEN: usize = 1023;
+/// Codeword length for BCH(2047, 512, 180) with m=11.
+/// Changed from 1023 (m=10, which violated the BCH bound t*m <= n).
+const HELPER_BITS_LEN: usize = 2047;
 
 fn method_from_ffi(method: u32, threshold: f32) -> Option<QuantizationMethod> {
     match method {
@@ -68,7 +70,7 @@ pub unsafe extern "C" fn bkd_enroll(
     };
 
     let embedding = unsafe { slice::from_raw_parts(req.embedding_ptr, req.embedding_len) };
-    let params = BchParams::new_1023_512(req.bch_t);
+    let params = BchParams::new_2047_512(req.bch_t);
     if params.validate().is_err() {
         return FfiResultCode::ERR_INVALID;
     }
@@ -150,7 +152,7 @@ pub unsafe extern "C" fn bkd_recover(
     let mut commitment_arr = [0u8; COMMITMENT_LEN];
     commitment_arr.copy_from_slice(commitment);
 
-    let params = BchParams::new_1023_512(req.bch_t);
+    let params = BchParams::new_2047_512(req.bch_t);
     if params.validate().is_err() {
         return FfiResultCode::ERR_INVALID;
     }
