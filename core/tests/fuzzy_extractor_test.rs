@@ -1,7 +1,7 @@
 use biometric_core::{enroll, recover, BchParams, QuantizationMethod};
 
 fn base_embedding() -> Vec<f32> {
-    (0..128)
+    (0..512)
         .map(|i| if i % 3 == 0 { 0.6 } else { -0.4 })
         .collect()
 }
@@ -9,7 +9,7 @@ fn base_embedding() -> Vec<f32> {
 #[test]
 fn enrollment_and_recovery_same_embedding() {
     let emb = base_embedding();
-    let params = BchParams::new_255_128(90);
+    let params = BchParams::new_1023_512(15);
 
     let out = enroll(&emb, QuantizationMethod::Sign, params).unwrap();
     let recovered = recover(&emb, QuantizationMethod::Sign, &out.helper_data).unwrap();
@@ -20,12 +20,12 @@ fn enrollment_and_recovery_same_embedding() {
 #[test]
 fn recovery_fails_for_large_variation() {
     let emb = base_embedding();
-    let params = BchParams::new_255_128(10);
+    let params = BchParams::new_1023_512(10);
 
     let out = enroll(&emb, QuantizationMethod::Sign, params).unwrap();
 
     let mut changed = emb.clone();
-    for item in changed.iter_mut().take(80) {
+    for item in changed.iter_mut().take(220) {
         *item *= -1.0;
     }
 

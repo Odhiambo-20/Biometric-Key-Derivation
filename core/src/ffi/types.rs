@@ -26,9 +26,12 @@ pub struct BkdEnrollRequest {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct BkdEnrollResponse {
-    pub helper_out_ptr: *mut u8,
-    pub helper_out_cap: usize,
-    pub helper_out_len_ptr: *mut usize,
+    pub helper_bits_out_ptr: *mut u8,
+    pub helper_bits_out_cap: usize,
+    pub salt_out_ptr: *mut u8,
+    pub salt_out_cap: usize,
+    pub commitment_out_ptr: *mut u8,
+    pub commitment_out_cap: usize,
     pub key_out_ptr: *mut u8,
     pub key_out_cap: usize,
 }
@@ -40,8 +43,13 @@ pub struct BkdRecoverRequest {
     pub embedding_len: usize,
     pub method: u32,
     pub threshold: f32,
-    pub helper_ptr: *const u8,
-    pub helper_len: usize,
+    pub bch_t: usize,
+    pub helper_bits_ptr: *const u8,
+    pub helper_bits_len: usize,
+    pub salt_ptr: *const u8,
+    pub salt_len: usize,
+    pub commitment_ptr: *const u8,
+    pub commitment_len: usize,
 }
 
 #[repr(C)]

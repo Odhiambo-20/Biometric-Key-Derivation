@@ -1,6 +1,6 @@
 use crate::error::{BiometricError, Result};
 
-pub const EMBEDDING_DIM: usize = 128;
+pub const EMBEDDING_DIM: usize = 512;
 
 pub fn validate_embedding(embedding: &[f32]) -> Result<()> {
     if embedding.len() != EMBEDDING_DIM {

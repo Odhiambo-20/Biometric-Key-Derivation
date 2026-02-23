@@ -9,6 +9,18 @@ description = "Biometric key derivation core: quantization, ECC-friendly fuzzy e
 name = "biometric_core"
 crate-type = ["rlib", "cdylib", "staticlib"]
 
+[[bench]]
+name = "quantization_benchmark"
+harness = false
+
+[[bench]]
+name = "bch_benchmark"
+harness = false
+
+[[bench]]
+name = "full_pipeline_benchmark"
+harness = false
+
 [dependencies]
 thiserror = "1"
 sha2 = "0.10"

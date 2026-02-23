@@ -12,21 +12,22 @@ impl BchParams {
         Self { n: 255, k: 128, t }
     }
 
-    pub fn new_256_128(t: usize) -> Self {
-        Self::new_255_128(t)
+    pub fn new_1023_512(t: usize) -> Self {
+        Self { n: 1023, k: 512, t }
     }
 
     pub fn validate(&self) -> Result<()> {
-        if self.n != 255 || self.k != 128 {
+        if self.n != 1023 || self.k != 512 {
             return Err(BiometricError::InvalidBchParams(format!(
-                "this profile supports only n=255, k=128; got n={}, k={}",
+                "this profile supports only n=1023, k=512; got n={}, k={}",
                 self.n, self.k
             )));
         }
 
-        if self.t == 0 || self.t > 127 {
+        // Bound is enforced to current backend profile guarantees.
+        if self.t == 0 || self.t > 15 {
             return Err(BiometricError::InvalidBchParams(format!(
-                "t must be in 1..=127 for n=255, got {}",
+                "true BCH correction in this profile supports t in 1..=15; got {}",
                 self.t
             )));
         }
@@ -37,6 +38,6 @@ impl BchParams {
 
 impl Default for BchParams {
     fn default() -> Self {
-        Self::new_255_128(90)
+        Self::new_1023_512(15)
     }
 }

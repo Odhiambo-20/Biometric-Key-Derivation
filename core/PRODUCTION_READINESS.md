@@ -29,3 +29,5 @@ Core implementation includes:
 2. FAR/FRR empirical tuning on real biometric dataset.
 3. End-to-end ABI tests from Swift/Kotlin callers.
 4. Security/compliance review of native BCH dependency policy.
+
+- Updated core input profile to 512-dimensional averaged embedding (computed upstream from 10-15 video frames).

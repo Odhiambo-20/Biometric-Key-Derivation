@@ -29,7 +29,7 @@ pub fn expand_biometric_bits(bits: &[u8], target_len: usize) -> Result<Vec<u8>> 
     Ok(out)
 }
 
-// Kept for API compatibility.
+// Kept for legacy API compatibility.
 pub fn expand_biometric_bits_255(bits_128: &[u8]) -> Result<Vec<u8>> {
-    expand_biometric_bits(bits_128, 256)
+    expand_biometric_bits(bits_128, 255)
 }

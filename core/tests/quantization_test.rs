@@ -22,3 +22,11 @@ fn multibit_quantization_works() {
     let bits = quantize_2bit(&emb).unwrap();
     assert_eq!(bits.len(), 8);
 }
+
+#[test]
+fn sign_quantization_512_len() {
+    let emb = vec![0.2f32; 512];
+    let bits = quantize_sign(&emb).unwrap();
+    assert_eq!(bits.len(), 512);
+    assert!(bits.iter().all(|&b| b == 1));
+}
