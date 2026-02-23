@@ -1,40 +1,46 @@
 [package]
 name = "biometric_core"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2021"
-license = "MIT"
-description = "Biometric key derivation core: quantization, ECC-friendly fuzzy extractor, and key derivation"
+authors = ["Biometric Key Derivation Team"]
 
 [lib]
-name = "biometric_core"
-crate-type = ["rlib", "cdylib", "staticlib"]
-
-[[bench]]
-name = "quantization_benchmark"
-harness = false
-
-[[bench]]
-name = "bch_benchmark"
-harness = false
-
-[[bench]]
-name = "full_pipeline_benchmark"
-harness = false
+crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
-thiserror = "1"
+# BCH error correction (Linux kernel BCH library bindings)
+bchlib-sys = "0.1"
+
+# Cryptographic primitives
+ring = { version = "0.17", features = ["std"] }
 sha2 = "0.10"
 hkdf = "0.12"
+
+# Secure memory handling
+zeroize = { version = "1.7", features = ["derive"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Random number generation
 rand = "0.8"
-zeroize = { version = "1", features = ["zeroize_derive"] }
-serde = { version = "1", features = ["derive"] }
-subtle = "2"
-bchlib-sys = "0.2.1"
+
+# Constant-time operations
+subtle = "2.5"
+
+# Error handling
+thiserror = "1.0"
 
 [dev-dependencies]
-rand = "0.8"
+# Testing only
 
 [profile.release]
-lto = true
+opt-level = 3
+lto = "fat"
 codegen-units = 1
+strip = true
 panic = "abort"
+
+[profile.bench]
+inherits = "release"
