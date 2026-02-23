@@ -1,7 +1,7 @@
 use rand::{rngs::OsRng, RngCore};
 use zeroize::Zeroize;
 
-use crate::bch::{encode::expand_biometric_bits, BchCodec, BchParams};
+use crate::bch::{BchCodec, BchParams};
 use crate::error::Result;
 use crate::fuzzy_extractor::helper_data::HelperData;
 use crate::fuzzy_extractor::xor::xor_vec;
@@ -18,6 +18,16 @@ pub struct EnrollmentOutput {
     pub crypto_key: [u8; 32],
 }
 
+/// Enrollment: Convert face embedding into helper data and cryptographic key
+/// 
+/// Steps:
+/// 1. Quantize 512-float embedding → 512 bits
+/// 2. Generate random 512-bit message
+/// 3. BCH encode message → 1023-bit codeword
+/// 4. XOR codeword with quantized biometric → helper data (store publicly)
+/// 5. Hash message → commitment (for verification)
+/// 6. HKDF on message → 256-bit crypto key
+/// 7. Securely delete message and intermediate values
 pub fn enroll(
     embedding: &[f32],
     method: QuantizationMethod,
@@ -26,42 +36,77 @@ pub fn enroll(
     params.validate()?;
     let codec = BchCodec::new(params);
 
+    // Step 1: Quantize embedding to bits
     let biometric_bits = quantize_embedding(embedding, method)?;
-    let expanded_bio = expand_biometric_bits(&biometric_bits, params.n)?;
-
-    let mut message_bits = vec![0u8; params.k];
-    let mut rnd = vec![0u8; params.k];
-    OsRng.fill_bytes(&mut rnd);
-    for (dst, byte) in message_bits.iter_mut().zip(rnd.iter()) {
-        *dst = byte & 1;
+    
+    if biometric_bits.len() != params.k {
+        // For 512-dim embedding with sign quantization, should be 512 bits
+        // But if using multi-bit quantization, might be different
+        // Pad or truncate to match k
+        let mut adjusted_bio = biometric_bits.clone();
+        adjusted_bio.resize(params.k, 0);
+        return Self::enroll_internal(adjusted_bio, params, codec);
     }
 
-    let codeword = codec.encode(&message_bits)?;
-    let helper_bits = xor_vec(&codeword, &expanded_bio)?;
+    Self::enroll_internal(biometric_bits, params, codec)
+}
 
-    let mut message_bytes = pack_bits(&message_bits)?;
-    let commitment = sha256_bytes(&message_bytes);
+impl EnrollmentOutput {
+    fn enroll_internal(
+        biometric_bits: Vec<u8>,
+        params: BchParams,
+        codec: BchCodec,
+    ) -> Result<EnrollmentOutput> {
+        // Step 2: Generate random message (k bits)
+        let mut message_bits = vec![0u8; params.k];
+        let mut rnd = vec![0u8; (params.k + 7) / 8];
+        OsRng.fill_bytes(&mut rnd);
+        for (i, dst) in message_bits.iter_mut().enumerate() {
+            *dst = (rnd[i / 8] >> (i % 8)) & 1;
+        }
 
-    let mut salt = [0u8; 16];
-    OsRng.fill_bytes(&mut salt);
-    let crypto_key = derive_key_256(&message_bytes, &salt, HKDF_INFO)?;
+        // Step 3: BCH encode message → codeword (n bits)
+        let codeword = codec.encode(&message_bits)?;
 
-    rnd.zeroize();
-    message_bits.zeroize();
-    message_bytes.zeroize();
+        // Expand biometric bits to match codeword length if needed
+        let mut bio_expanded = biometric_bits.clone();
+        while bio_expanded.len() < params.n {
+            // Simple repetition padding
+            let idx = bio_expanded.len() % biometric_bits.len();
+            bio_expanded.push(biometric_bits[idx]);
+        }
+        bio_expanded.truncate(params.n);
 
-    let helper_data = HelperData {
-        version: 1,
-        n: params.n,
-        k: params.k,
-        t: params.t,
-        helper_bits,
-        commitment,
-        salt,
-    };
+        // Step 4: XOR codeword with biometric → helper data
+        let helper_bits = xor_vec(&codeword, &bio_expanded)?;
 
-    Ok(EnrollmentOutput {
-        helper_data,
-        crypto_key,
-    })
+        // Step 5: Commitment (hash of message for verification)
+        let mut message_bytes = pack_bits(&message_bits)?;
+        let commitment = sha256_bytes(&message_bytes);
+
+        // Step 6: Generate salt and derive key
+        let mut salt = [0u8; 16];
+        OsRng.fill_bytes(&mut salt);
+        let crypto_key = derive_key_256(&message_bytes, &salt, HKDF_INFO)?;
+
+        // Step 7: Secure deletion
+        rnd.zeroize();
+        message_bits.zeroize();
+        message_bytes.zeroize();
+
+        let helper_data = HelperData {
+            version: 1,
+            n: params.n,
+            k: params.k,
+            t: params.t,
+            helper_bits,
+            commitment,
+            salt,
+        };
+
+        Ok(EnrollmentOutput {
+            helper_data,
+            crypto_key,
+        })
+    }
 }
